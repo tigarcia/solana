@@ -1422,8 +1422,13 @@ fn assert_instruction_count() {
             ("solana_bpf_rust_param_passing", 146),
             ("solana_bpf_rust_rand", 488),
             ("solana_bpf_rust_sanity", 9128),
+<<<<<<< HEAD
             ("solana_bpf_rust_secp256k1_recover", 25889),
             ("solana_bpf_rust_sha", 30692),
+=======
+            ("solana_bpf_rust_secp256k1_recover", 25707),
+            ("solana_bpf_rust_sha", 27033),
+>>>>>>> 0a3a18744 (Update the consumed compute units cost for hashing syscalls)
         ]);
     }
 
