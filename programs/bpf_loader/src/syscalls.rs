@@ -86,6 +86,8 @@ pub enum SyscallError {
     CopyOverlapping,
     #[error("Return data too large ({0} > {1})")]
     ReturnDataTooLarge(u64, u64),
+    #[error("Hashing too many sequences")]
+    TooManySlices,
 }
 impl From<SyscallError> for EbpfError<BpfError> {
     fn from(error: SyscallError) -> Self {
@@ -1124,7 +1126,39 @@ impl<'a> SyscallObject<BpfError> for SyscallSha256<'a> {
         memory_mapping: &MemoryMapping,
         result: &mut Result<u64, EbpfError<BpfError>>,
     ) {
+<<<<<<< HEAD
         question_mark!(self.compute_meter.consume(self.sha256_base_cost), result);
+=======
+        let invoke_context = question_mark!(
+            self.invoke_context
+                .try_borrow()
+                .map_err(|_| SyscallError::InvokeContextBorrowFailed),
+            result
+        );
+        let compute_budget = invoke_context.get_compute_budget();
+        if invoke_context
+            .feature_set
+            .is_active(&update_syscall_base_costs::id())
+            && compute_budget.sha256_max_slices < vals_len
+        {
+            ic_msg!(
+                invoke_context,
+                "Sha256 hashing {} sequences in one syscall is over the limit {}",
+                vals_len,
+                compute_budget.sha256_max_slices,
+            );
+            *result = Err(SyscallError::TooManySlices.into());
+            return;
+        }
+        question_mark!(
+            invoke_context
+                .get_compute_meter()
+                .consume(compute_budget.sha256_base_cost),
+            result
+        );
+
+        let loader_id = &question_mark!(get_current_loader_key(&invoke_context), result);
+>>>>>>> 0a3a18744 (Update the consumed compute units cost for hashing syscalls)
         let hash_result = question_mark!(
             translate_slice_mut::<u8>(
                 memory_mapping,
@@ -1158,11 +1192,27 @@ impl<'a> SyscallObject<BpfError> for SyscallSha256<'a> {
                     ),
                     result
                 );
+<<<<<<< HEAD
                 question_mark!(
                     self.compute_meter
                         .consume(self.sha256_byte_cost * (val.len() as u64 / 2)),
                     result
                 );
+=======
+                let cost = if invoke_context
+                    .feature_set
+                    .is_active(&update_syscall_base_costs::id())
+                {
+                    compute_budget.mem_op_base_cost.max(
+                        compute_budget
+                            .sha256_byte_cost
+                            .saturating_mul(val.len() as u64 / 2),
+                    )
+                } else {
+                    compute_budget.sha256_byte_cost * (val.len() as u64 / 2)
+                };
+                question_mark!(invoke_context.get_compute_meter().consume(cost), result);
+>>>>>>> 0a3a18744 (Update the consumed compute units cost for hashing syscalls)
                 hasher.hash(bytes);
             }
         }
@@ -1337,7 +1387,39 @@ impl<'a> SyscallObject<BpfError> for SyscallKeccak256<'a> {
         memory_mapping: &MemoryMapping,
         result: &mut Result<u64, EbpfError<BpfError>>,
     ) {
+<<<<<<< HEAD
         question_mark!(self.compute_meter.consume(self.base_cost), result);
+=======
+        let invoke_context = question_mark!(
+            self.invoke_context
+                .try_borrow()
+                .map_err(|_| SyscallError::InvokeContextBorrowFailed),
+            result
+        );
+        let compute_budget = invoke_context.get_compute_budget();
+        if invoke_context
+            .feature_set
+            .is_active(&update_syscall_base_costs::id())
+            && compute_budget.sha256_max_slices < vals_len
+        {
+            ic_msg!(
+                invoke_context,
+                "Keccak256 hashing {} sequences in one syscall is over the limit {}",
+                vals_len,
+                compute_budget.sha256_max_slices,
+            );
+            *result = Err(SyscallError::TooManySlices.into());
+            return;
+        }
+        question_mark!(
+            invoke_context
+                .get_compute_meter()
+                .consume(compute_budget.sha256_base_cost),
+            result
+        );
+
+        let loader_id = &question_mark!(get_current_loader_key(&invoke_context), result);
+>>>>>>> 0a3a18744 (Update the consumed compute units cost for hashing syscalls)
         let hash_result = question_mark!(
             translate_slice_mut::<u8>(
                 memory_mapping,
@@ -1365,11 +1447,27 @@ impl<'a> SyscallObject<BpfError> for SyscallKeccak256<'a> {
                     ),
                     result
                 );
+<<<<<<< HEAD
                 question_mark!(
                     self.compute_meter
                         .consume(self.byte_cost * (val.len() as u64 / 2)),
                     result
                 );
+=======
+                let cost = if invoke_context
+                    .feature_set
+                    .is_active(&update_syscall_base_costs::id())
+                {
+                    compute_budget.mem_op_base_cost.max(
+                        compute_budget
+                            .sha256_byte_cost
+                            .saturating_mul(val.len() as u64 / 2),
+                    )
+                } else {
+                    compute_budget.sha256_byte_cost * (val.len() as u64 / 2)
+                };
+                question_mark!(invoke_context.get_compute_meter().consume(cost), result);
+>>>>>>> 0a3a18744 (Update the consumed compute units cost for hashing syscalls)
                 hasher.hash(bytes);
             }
         }
@@ -1652,6 +1750,267 @@ impl<'a> SyscallObject<BpfError> for SyscallSecp256k1Recover<'a> {
     }
 }
 
+<<<<<<< HEAD
+=======
+pub struct SyscallZkTokenElgamalOp<'a, 'b> {
+    invoke_context: Rc<RefCell<&'a mut InvokeContext<'b>>>,
+}
+
+impl<'a, 'b> SyscallObject<BpfError> for SyscallZkTokenElgamalOp<'a, 'b> {
+    fn call(
+        &mut self,
+        op: u64,
+        ct_0_addr: u64,
+        ct_1_addr: u64,
+        ct_result_addr: u64,
+        _arg5: u64,
+        memory_mapping: &MemoryMapping,
+        result: &mut Result<u64, EbpfError<BpfError>>,
+    ) {
+        use solana_zk_token_sdk::zk_token_elgamal::{ops, pod};
+
+        let invoke_context = question_mark!(
+            self.invoke_context
+                .try_borrow()
+                .map_err(|_| SyscallError::InvokeContextBorrowFailed),
+            result
+        );
+        let cost = invoke_context.get_compute_budget().zk_token_elgamal_op_cost;
+        question_mark!(invoke_context.get_compute_meter().consume(cost), result);
+
+        let loader_id = &question_mark!(get_current_loader_key(&invoke_context), result);
+        let ct_0 = question_mark!(
+            translate_type::<pod::ElGamalCiphertext>(memory_mapping, ct_0_addr, loader_id),
+            result
+        );
+        let ct_1 = question_mark!(
+            translate_type::<pod::ElGamalCiphertext>(memory_mapping, ct_1_addr, loader_id),
+            result
+        );
+
+        if let Some(ct_result) = match op {
+            ops::OP_ADD => ops::add(ct_0, ct_1),
+            ops::OP_SUB => ops::subtract(ct_0, ct_1),
+            _ => None,
+        } {
+            *question_mark!(
+                translate_type_mut::<pod::ElGamalCiphertext>(
+                    memory_mapping,
+                    ct_result_addr,
+                    loader_id,
+                ),
+                result
+            ) = ct_result;
+            *result = Ok(0);
+        } else {
+            *result = Ok(1);
+        }
+    }
+}
+
+pub struct SyscallZkTokenElgamalOpWithLoHi<'a, 'b> {
+    invoke_context: Rc<RefCell<&'a mut InvokeContext<'b>>>,
+}
+
+impl<'a, 'b> SyscallObject<BpfError> for SyscallZkTokenElgamalOpWithLoHi<'a, 'b> {
+    fn call(
+        &mut self,
+        op: u64,
+        ct_0_addr: u64,
+        ct_1_lo_addr: u64,
+        ct_1_hi_addr: u64,
+        ct_result_addr: u64,
+        memory_mapping: &MemoryMapping,
+        result: &mut Result<u64, EbpfError<BpfError>>,
+    ) {
+        use solana_zk_token_sdk::zk_token_elgamal::{ops, pod};
+
+        let invoke_context = question_mark!(
+            self.invoke_context
+                .try_borrow()
+                .map_err(|_| SyscallError::InvokeContextBorrowFailed),
+            result
+        );
+        let cost = invoke_context.get_compute_budget().zk_token_elgamal_op_cost;
+        question_mark!(invoke_context.get_compute_meter().consume(cost), result);
+
+        let loader_id = &question_mark!(get_current_loader_key(&invoke_context), result);
+        let ct_0 = question_mark!(
+            translate_type::<pod::ElGamalCiphertext>(memory_mapping, ct_0_addr, loader_id),
+            result
+        );
+        let ct_1_lo = question_mark!(
+            translate_type::<pod::ElGamalCiphertext>(memory_mapping, ct_1_lo_addr, loader_id),
+            result
+        );
+        let ct_1_hi = question_mark!(
+            translate_type::<pod::ElGamalCiphertext>(memory_mapping, ct_1_hi_addr, loader_id),
+            result
+        );
+
+        if let Some(ct_result) = match op {
+            ops::OP_ADD => ops::add_with_lo_hi(ct_0, ct_1_lo, ct_1_hi),
+            ops::OP_SUB => ops::subtract_with_lo_hi(ct_0, ct_1_lo, ct_1_hi),
+            _ => None,
+        } {
+            *question_mark!(
+                translate_type_mut::<pod::ElGamalCiphertext>(
+                    memory_mapping,
+                    ct_result_addr,
+                    loader_id,
+                ),
+                result
+            ) = ct_result;
+            *result = Ok(0);
+        } else {
+            *result = Ok(1);
+        }
+    }
+}
+
+pub struct SyscallZkTokenElgamalOpWithScalar<'a, 'b> {
+    invoke_context: Rc<RefCell<&'a mut InvokeContext<'b>>>,
+}
+
+impl<'a, 'b> SyscallObject<BpfError> for SyscallZkTokenElgamalOpWithScalar<'a, 'b> {
+    fn call(
+        &mut self,
+        op: u64,
+        ct_addr: u64,
+        scalar: u64,
+        ct_result_addr: u64,
+        _arg5: u64,
+        memory_mapping: &MemoryMapping,
+        result: &mut Result<u64, EbpfError<BpfError>>,
+    ) {
+        use solana_zk_token_sdk::zk_token_elgamal::{ops, pod};
+
+        let invoke_context = question_mark!(
+            self.invoke_context
+                .try_borrow()
+                .map_err(|_| SyscallError::InvokeContextBorrowFailed),
+            result
+        );
+        let cost = invoke_context.get_compute_budget().zk_token_elgamal_op_cost;
+        question_mark!(invoke_context.get_compute_meter().consume(cost), result);
+
+        let loader_id = &question_mark!(get_current_loader_key(&invoke_context), result);
+        let ct = question_mark!(
+            translate_type::<pod::ElGamalCiphertext>(memory_mapping, ct_addr, loader_id),
+            result
+        );
+
+        if let Some(ct_result) = match op {
+            ops::OP_ADD => ops::add_to(ct, scalar),
+            ops::OP_SUB => ops::subtract_from(ct, scalar),
+            _ => None,
+        } {
+            *question_mark!(
+                translate_type_mut::<pod::ElGamalCiphertext>(
+                    memory_mapping,
+                    ct_result_addr,
+                    loader_id,
+                ),
+                result
+            ) = ct_result;
+            *result = Ok(0);
+        } else {
+            *result = Ok(1);
+        }
+    }
+}
+
+// Blake3
+pub struct SyscallBlake3<'a, 'b> {
+    invoke_context: Rc<RefCell<&'a mut InvokeContext<'b>>>,
+}
+impl<'a, 'b> SyscallObject<BpfError> for SyscallBlake3<'a, 'b> {
+    fn call(
+        &mut self,
+        vals_addr: u64,
+        vals_len: u64,
+        result_addr: u64,
+        _arg4: u64,
+        _arg5: u64,
+        memory_mapping: &MemoryMapping,
+        result: &mut Result<u64, EbpfError<BpfError>>,
+    ) {
+        let invoke_context = question_mark!(
+            self.invoke_context
+                .try_borrow()
+                .map_err(|_| SyscallError::InvokeContextBorrowFailed),
+            result
+        );
+        let compute_budget = invoke_context.get_compute_budget();
+        if invoke_context
+            .feature_set
+            .is_active(&update_syscall_base_costs::id())
+            && compute_budget.sha256_max_slices < vals_len
+        {
+            ic_msg!(
+                invoke_context,
+                "Blake3 hashing {} sequences in one syscall is over the limit {}",
+                vals_len,
+                compute_budget.sha256_max_slices,
+            );
+            *result = Err(SyscallError::TooManySlices.into());
+            return;
+        }
+        question_mark!(
+            invoke_context
+                .get_compute_meter()
+                .consume(compute_budget.sha256_base_cost),
+            result
+        );
+
+        let loader_id = &question_mark!(get_current_loader_key(&invoke_context), result);
+        let hash_result = question_mark!(
+            translate_slice_mut::<u8>(
+                memory_mapping,
+                result_addr,
+                blake3::HASH_BYTES as u64,
+                loader_id,
+            ),
+            result
+        );
+        let mut hasher = blake3::Hasher::default();
+        if vals_len > 0 {
+            let vals = question_mark!(
+                translate_slice::<&[u8]>(memory_mapping, vals_addr, vals_len, loader_id),
+                result
+            );
+            for val in vals.iter() {
+                let bytes = question_mark!(
+                    translate_slice::<u8>(
+                        memory_mapping,
+                        val.as_ptr() as u64,
+                        val.len() as u64,
+                        loader_id,
+                    ),
+                    result
+                );
+                let cost = if invoke_context
+                    .feature_set
+                    .is_active(&update_syscall_base_costs::id())
+                {
+                    compute_budget.mem_op_base_cost.max(
+                        compute_budget
+                            .sha256_byte_cost
+                            .saturating_mul(val.len() as u64 / 2),
+                    )
+                } else {
+                    compute_budget.sha256_byte_cost * (val.len() as u64 / 2)
+                };
+                question_mark!(invoke_context.get_compute_meter().consume(cost), result);
+                hasher.hash(bytes);
+            }
+        }
+        hash_result.copy_from_slice(&hasher.result().to_bytes());
+        *result = Ok(0);
+    }
+}
+
+>>>>>>> 0a3a18744 (Update the consumed compute units cost for hashing syscalls)
 // Cross-program invocation syscalls
 
 struct AccountReferences<'a> {
@@ -3644,10 +4003,27 @@ mod tests {
             &config,
         )
         .unwrap();
+<<<<<<< HEAD
         let compute_meter: Rc<RefCell<dyn ComputeMeter>> =
             Rc::new(RefCell::new(MockComputeMeter {
                 remaining: (bytes1.len() + bytes2.len()) as u64,
             }));
+=======
+
+        invoke_context
+            .get_compute_meter()
+            .borrow_mut()
+            .mock_set_remaining(
+                (invoke_context.get_compute_budget().sha256_base_cost
+                    + invoke_context.get_compute_budget().mem_op_base_cost.max(
+                        invoke_context
+                            .get_compute_budget()
+                            .sha256_byte_cost
+                            .saturating_mul((bytes1.len() + bytes2.len()) as u64 / 2),
+                    ))
+                    * 4,
+            );
+>>>>>>> 0a3a18744 (Update the consumed compute units cost for hashing syscalls)
         let mut syscall = SyscallSha256 {
             sha256_base_cost: 0,
             sha256_byte_cost: 2,

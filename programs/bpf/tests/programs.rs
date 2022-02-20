@@ -1384,7 +1384,7 @@ fn assert_instruction_count() {
             ("sanity", 1255),
             ("sanity++", 1260),
             ("secp256k1_recover", 25383),
-            ("sha", 1328),
+            ("sha", 1895),
             ("struct_pass", 108),
             ("struct_ret", 28),
         ]);
@@ -1396,6 +1396,7 @@ fn assert_instruction_count() {
             ("solana_bpf_rust_alloc", 8906),
             ("solana_bpf_rust_custom_heap", 539),
             ("solana_bpf_rust_dep_crate", 2),
+<<<<<<< HEAD
             ("solana_bpf_rust_external_spend", 521),
             ("solana_bpf_rust_iter", 724),
             ("solana_bpf_rust_many_args", 237),
@@ -1407,6 +1408,19 @@ fn assert_instruction_count() {
             ("solana_bpf_rust_sanity", 917),
             ("solana_bpf_rust_secp256k1_recover", 612),
             ("solana_bpf_rust_sha", 29131),
+=======
+            ("solana_bpf_rust_external_spend", 327),
+            ("solana_bpf_rust_iter", 108),
+            ("solana_bpf_rust_many_args", 1289),
+            ("solana_bpf_rust_mem", 2217),
+            ("solana_bpf_rust_membuiltins", 1705),
+            ("solana_bpf_rust_noop", 315),
+            ("solana_bpf_rust_param_passing", 146),
+            ("solana_bpf_rust_rand", 418),
+            ("solana_bpf_rust_sanity", 9128),
+            ("solana_bpf_rust_secp256k1_recover", 25707),
+            ("solana_bpf_rust_sha", 27033),
+>>>>>>> 0a3a18744 (Update the consumed compute units cost for hashing syscalls)
         ]);
     }
 
