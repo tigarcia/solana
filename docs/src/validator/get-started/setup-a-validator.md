@@ -296,6 +296,16 @@ EOF"
 ### Close all open sessions (log out then, in again) ###
 ```
 
+#### System Clock
+
+Large system clock drift can prevent a node from properly participating in Solana's [gossip protocol](../validator/gossip.md).  Ensure that your system clock is accurate.  To check the current system clock, use:
+
+```bash
+timedatectl
+```
+
+Operators commonly use an ntp server to maintain an accurate system clock.
+
 ## Copy Key Pairs
 
 On your personal computer, not on the validator, securely copy your `validator-keypair.json` file and your `vote-account-keypair.json` file to the validator server:
